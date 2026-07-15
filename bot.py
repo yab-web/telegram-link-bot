@@ -22,7 +22,7 @@ def keep_alive():
     t.start()
 
 # --- 2. Telegram Bot Setup ---
-TOKEN = "8744677134:AAH1h_vL89B80VE0EJcitb1cYx0pJ_LbKAg"
+TOKEN = "8744677134:AAESIUN7oXLpYsu-L-5DD2cFgTDO8zpQtYc"
 
 # Regex pattern for URLs
 URL_REGEX = r'(https?://[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}[^\s]*)'
