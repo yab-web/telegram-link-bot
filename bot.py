@@ -23,7 +23,7 @@ def keep_alive():
 
 # --- 2. Telegram Bot Setup ---
 # ማስታወሻ፦ ቦት ፋዘር ላይ አዲስ Token ከተቀበልክ እዚህ ጋር መተካትህን አትርሳ!
-TOKEN = "8744677134:AAH1h_vL89B80VE0EJcitb1cYx0pJ_LbKAg"
+TOKEN = "8744677134:AAHQHkXdhFvolRPKj2EraFSuEENxYGeGA2k"
 
 # Regex pattern for URLs
 URL_REGEX = r'(https?://[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}[^\s]*)'
