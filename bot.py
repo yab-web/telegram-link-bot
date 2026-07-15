@@ -22,7 +22,8 @@ def keep_alive():
     t.start()
 
 # --- 2. Telegram Bot Setup ---
-TOKEN = "8744677134:AAF06FFJDvslOeb5LVkAj0uK7f-PotefRUI"
+# ማስታወሻ፦ ቦት ፋዘር ላይ አዲስ Token ከተቀበልክ እዚህ ጋር መተካትህን አትርሳ!
+TOKEN = "8744677134:AAH1h_vL89B80VE0EJcitb1cYx0pJ_LbKAg"
 
 # Regex pattern for URLs
 URL_REGEX = r'(https?://[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}[^\s]*)'
@@ -44,9 +45,13 @@ async def delete_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if re.search(URL_REGEX, message.text):
         try:
             await message.delete()
-            print(f"Deleted link from user: {message.from_user.username or message.from_user.first_name}")
+            
+            # Render Logs ላይ መረጃው በግልጽ እንዲታይ የሚቀረፅበት ቦታ
+            user_info = message.from_user.username or message.from_user.first_name
+            print(f"Deleted link from user: {user_info}")
+            
             await message.chat.send_message(
-                f"⚠️ ተጠቃሚ @{message.from_user.username or message.from_user.first_name}፣ በግሩፑ ውስጥ ሊንክ መላክ የተከለከለ ነው!"
+                f"⚠️ ተጠቃሚ @{user_info}፣ በግሩፑ ውስጥ ሊንክ መላክ የተከለከለ ነው!"
             )
         except Exception as e:
             print(f"Error deleting message: {e}")
