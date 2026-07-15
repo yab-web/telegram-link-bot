@@ -35,16 +35,17 @@ async def delete_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not message or not message.text:
         return
 
-    # Check if user is Admin or Creator
+    # Check if user is Admin or Creator (Allow admins to post links)
     member = await context.bot.get_chat_member(chat_id=message.chat_id, user_id=message.from_user.id)
     if member.status in ['administrator', 'creator']:
-        return  # Allow admins to post links
+        return
 
     # Check for links
     if re.search(URL_REGEX, message.text):
         try:
             await message.delete()
-            warning = await message.chat.send_message(
+            print(f"Deleted link from user: {message.from_user.username or message.from_user.first_name}")
+            await message.chat.send_message(
                 f"⚠️ ተጠቃሚ @{message.from_user.username or message.from_user.first_name}፣ በግሩፑ ውስጥ ሊንክ መላክ የተከለከለ ነው!"
             )
         except Exception as e:
