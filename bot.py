@@ -43,7 +43,7 @@ async def delete_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Check for links
     if re.search(URL_REGEX, message.text):
         try:
-            await message.delete()
+            await message.delete(print(f"Deleted link from user: {message.from_user.username}"))
             warning = await message.chat.send_message(
                 f"⚠️ ተጠቃሚ @{message.from_user.username or message.from_user.first_name}፣ በግሩፑ ውስጥ ሊንክ መላክ የተከለከለ ነው!"
             )
