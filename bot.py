@@ -1,80 +1,63 @@
-import logging
+import os
 import re
+from threading import Thread
+from flask import Flask
 from telegram import Update
-from telegram.ext import Application, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-# የቦትህን Token እዚህ ጋር አስገባ
-BOT_TOKEN = "8744677134:AAHlh_vL89B8OVEOEJcitb1cYxOpJ_LbKAg"
+# --- 1. Web Server for Render Keep-Alive ---
+app = Flask('')
 
-# ሎግ ለመከታተል (ለመቆጣጠር)
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
+@app.route('/')
+def home():
+    return "Bot is running live!"
 
-async def check_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message = update.effective_message
-    chat = update.effective_chat
-    user = update.effective_user
+def run_flask():
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)
 
-    # ቦቱ በግሩፕ ውስጥ ብቻ እንዲሰራ (በግል እንዳይሆን)
-    if chat.type in ["group", "supergroup"]:
-        
-        # ላኪው የግሩፑ አስተዳዳሪ (Admin) ከሆነ ሊንክ መላክ ይችላል
-        member = await chat.get_member(user.id)
-        if member.status in ["creator", "administrator"]:
-            return
+def keep_alive():
+    t = Thread(target=run_flask)
+    t.daemon = True
+    t.start()
 
-        text = message.text or message.caption or ""
-        
-        # ሊንክ መኖሩን በረቂቅ መፈትሻ (Regular Expression) ማረጋገጫ
-        # http://, https://, t.me, ወይም .com/.org የመሳሰሉትን ይይዛል
-        link_pattern = re.compile(
-            r'(https?://[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9-]+\.[a-zA-Z]{2,})'
-        )
+# --- 2. Telegram Bot Setup ---
+TOKEN = "8744677134:AAH1h_vL89B80VE0EJcitb1cYx0pJ_LbKAg"
 
-        if link_pattern.search(text):
-            try:
-                # 1. የተላከውን ሊንክ ማጥፋት
-                await message.delete()
-                
-                # 2. ለላከው ሰው ብቻ የሚታይ ማስጠንቀቂያ መላክ (ለ5 ሰከንድ ቆይቶ የሚጠፋ)
-                warning_text = f"🚫 @{user.username or user.first_name}፣ በዚህ ግሩፕ ውስጥ ሊንክ ማስተላለፍ ወይም መልቀቅ አይችሉም!"
-                warning_msg = await context.bot.send_message(
-                    chat_id=chat.id, 
-                    text=warning_text
-                )
-                
-                # ግሩፑ በሜሴጅ እንዳይጨናነቅ ማስጠንቀቂያውን ከጥቂት ሰከንዶች በኋላ ማጥፋት (አማራጭ)
-                context.job_queue.run_once(
-                    delete_warning, 
-                    5, 
-                    data={"chat_id": chat.id, "message_id": warning_msg.message_id}
-                )
-                
-            except Exception as e:
-                logging.error(f"ስህተት ተከስቷል: {e}")
+# Regex pattern for URLs
+URL_REGEX = r'(https?://[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}[^\s]*)'
 
-# ማስጠንቀቂያውን የሚያጠፋው ተግባር
-async def delete_warning(context: ContextTypes.DEFAULT_TYPE):
-    job = context.job
-    try:
-        await context.bot.delete_message(
-            chat_id=job.data["chat_id"], 
-            message_id=job.data["message_id"]
-        )
-    except Exception:
-        pass
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("ቦቱ በስኬት ስራ ጀምሯል! ሊንኮችን በራስ-ሰር ያጠፋል።")
+
+async def delete_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message = update.message
+    if not message or not message.text:
+        return
+
+    # Check if user is Admin or Creator
+    member = await context.bot.get_chat_member(chat_id=message.chat_id, user_id=message.from_user.id)
+    if member.status in ['administrator', 'creator']:
+        return  # Allow admins to post links
+
+    # Check for links
+    if re.search(URL_REGEX, message.text):
+        try:
+            await message.delete()
+            warning = await message.chat.send_message(
+                f"⚠️ ተጠቃሚ @{message.from_user.username or message.from_user.first_name}፣ በግሩፑ ውስጥ ሊንክ መላክ የተከለከለ ነው!"
+            )
+        except Exception as e:
+            print(f"Error deleting message: {e}")
 
 def main():
-    # ቦቱን ማስነሳት
-    application = Application.builder().token(BOT_TOKEN).build()
+    keep_alive()  # Starts the web server
+    application = Application.builder().token(TOKEN).build()
 
-    # ሁሉንም ጽሁፎች የሚፈትሽ (የሊንክ ማጣሪያን ጨምሮ)
-    application.add_handler(MessageHandler(filters.TEXT | filters.CAPTION, check_links))
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, delete_links))
 
-    # ቦቱን በቋሚነት ማሰራት
-    print("ቦቱ መስራት ጀምሯል...")
+    print("Bot is running...")
     application.run_polling()
 
 if __name__ == '__main__':
