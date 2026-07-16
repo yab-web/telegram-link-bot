@@ -1,4 +1,5 @@
 import os
+import asyncio
 from flask import Flask
 from threading import Thread
 from telegram import Update
@@ -19,22 +20,28 @@ def keep_alive():
     t.daemon = True
     t.start()
 
-# Put your Telegram Bot Token here
 TOKEN = "8744677134:AAFgbdvbt1WkuPD47bsRJzxLe52OJphTseE"
 
 # 1. Welcome Message Function
 async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for member in update.message.new_chat_members:
-        # Don't welcome the bot itself
         if member.id == context.bot.id:
             continue
             
         first_name = member.first_name
-        welcome_text = f"ሰላም {first_name} 👋\nእንኳን ወደ የለኩ ከታ ቃለህይወት ቤተክርስቲያን የወጣቶች አገልግሎት ግሩፓችን በደህና መጣህ/ሽ! ✨"
+        welcome_text = f"ሰላም {first_name} 👋\nእንኳን ወደ ግሩፓችን በደህና መጣህ/ሽ! ✨"
         
         await update.message.reply_text(welcome_text)
 
-# 2. Link Deletion Function (Ignores Admins)
+# Helper function to delete warning message after a delay
+async def delete_warning_after_delay(chat_id, message_id, context, delay=5):
+    await asyncio.sleep(delay)
+    try:
+        await context.bot.delete_message(chat_id=chat_id, message_id=message_id)
+    except Exception as e:
+        print(f"Error deleting warning message: {e}")
+
+# 2. Link Deletion + Warning Message Function
 async def delete_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
     if not message or not message.text:
@@ -42,27 +49,39 @@ async def delete_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     chat_id = message.chat_id
     user_id = message.from_user.id
+    user_name = message.from_user.first_name
 
     try:
-        # Check if the user is an Admin or Creator
+        # Check if user is Admin or Creator
         member = await context.bot.get_chat_member(chat_id, user_id)
         if member.status in ['administrator', 'creator']:
-            return  # Allow admins to send links
+            return  # Admins can send links
     except Exception as e:
         print(f"Error checking admin status: {e}")
 
-    # Delete the message if it contains links
-    await message.delete()
+    try:
+        # 1. Delete the link message
+        await message.delete()
+        
+        # 2. Send warning text
+        warning_msg = await context.bot.send_message(
+            chat_id=chat_id,
+            text=f"⚠️ ሰላም {user_name}፣ በዚህ ግሩፕ ውስጥ ሊንክ መላክ የተከለከለ ነው! ጌታ ይባርክ/ሽ"
+        )
+        
+        # 3. Auto-delete the warning message after 5 seconds to keep chat clean
+        asyncio.create_task(delete_warning_after_delay(chat_id, warning_msg.message_id, context, 5))
+        
+    except Exception as e:
+        print(f"Error handling link deletion: {e}")
 
 def main():
     keep_alive()
 
     application = Application.builder().token(TOKEN).build()
 
-    # Welcome message handler for new group members
+    # Handlers
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome_new_member))
-
-    # Link filter handler for text messages
     application.add_handler(MessageHandler(filters.TEXT & (filters.Entity("url") | filters.Entity("text_link")), delete_links))
 
     print("Bot is running...")
