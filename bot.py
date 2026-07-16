@@ -22,7 +22,15 @@ def keep_alive():
 
 TOKEN = "8744677134:AAFgbdvbt1WkuPD47bsRJzxLe52OJphTseE"
 
-# 1. Welcome Message Function
+# Helper function to delete any message after a delay
+async def delete_message_after_delay(chat_id, message_id, context, delay=5):
+    await asyncio.sleep(delay)
+    try:
+        await context.bot.delete_message(chat_id=chat_id, message_id=message_id)
+    except Exception as e:
+        print(f"Error deleting message: {e}")
+
+# 1. Welcome Message Function (Auto-deletes after 5 seconds)
 async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for member in update.message.new_chat_members:
         if member.id == context.bot.id:
@@ -31,17 +39,13 @@ async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE)
         first_name = member.first_name
         welcome_text = f"ሰላም {first_name} 👋\nእንኳን ወደ የለኩ ከታ ቃለህይወት ቤተክርስቲያን የወጣቶች አገልግሎት ግሩፓችን በደህና መጣህ/ሽ! ✨"
         
-        await update.message.reply_text(welcome_text)
+        # Send welcome message
+        welcome_msg = await update.message.reply_text(welcome_text)
+        
+        # Auto-delete welcome message after 5 seconds
+        asyncio.create_task(delete_message_after_delay(update.message.chat_id, welcome_msg.message_id, context, 5))
 
-# Helper function to delete warning message after a delay
-async def delete_warning_after_delay(chat_id, message_id, context, delay=5):
-    await asyncio.sleep(delay)
-    try:
-        await context.bot.delete_message(chat_id=chat_id, message_id=message_id)
-    except Exception as e:
-        print(f"Error deleting warning message: {e}")
-
-# 2. Link Deletion + Warning Message Function
+# 2. Link Deletion + Warning Message Function (Auto-deletes after 5 seconds)
 async def delete_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
     if not message or not message.text:
@@ -66,11 +70,11 @@ async def delete_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # 2. Send warning text
         warning_msg = await context.bot.send_message(
             chat_id=chat_id,
-            text=f"⚠️ ሰላም {user_name}፣ በዚህ ግሩፕ ውስጥ ሊንክ መላክ የተከለከለ ነው! ጌታ ይባርክ/ሽ"
+            text=f"⚠️ ሰላም {user_name}፣ በዚህ ግሩፕ ውስጥ ሊንክ መላክ የተከለከለ ነው!ጌታ ይባርክ/ሽ"
         )
         
-        # 3. Auto-delete the warning message after 5 seconds to keep chat clean
-        asyncio.create_task(delete_warning_after_delay(chat_id, warning_msg.message_id, context, 5))
+        # 3. Auto-delete warning message after 5 seconds
+        asyncio.create_task(delete_message_after_delay(chat_id, warning_msg.message_id, context, 5))
         
     except Exception as e:
         print(f"Error handling link deletion: {e}")
