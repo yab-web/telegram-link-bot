@@ -1,73 +1,69 @@
 import os
-import re
-from threading import Thread
 from flask import Flask
+from threading import Thread
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, MessageHandler, filters, ContextTypes
 
-# --- 1. Web Server for Render Keep-Alive ---
+# Flask setup for Render keep-alive
 app = Flask('')
 
 @app.route('/')
 def home():
-    return "Bot is running live!"
+    return "Bot is running 24/7!"
 
-def run_flask():
-    port = int(os.environ.get('PORT', 8080))
-    app.run(host='0.0.0.0', port=port)
+def run():
+    app.run(host='0.0.0.0', port=8080)
 
 def keep_alive():
-    t = Thread(target=run_flask)
+    t = Thread(target=run)
     t.daemon = True
     t.start()
 
-# --- 2. Telegram Bot Setup ---
+# Put your Telegram Bot Token here
 TOKEN = "8744677134:AAFgbdvbt1WkuPD47bsRJzxLe52OJphTseE"
 
-# Regex pattern for URLs
-URL_REGEX = r'(https?://[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}[^\s]*)'
+# 1. Welcome Message Function
+async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    for member in update.message.new_chat_members:
+        # Don't welcome the bot itself
+        if member.id == context.bot.id:
+            continue
+            
+        first_name = member.first_name
+        welcome_text = f"ሰላም {first_name} 👋\nእንኳን ወደ ግሩፓችን በደህና መጣህ/ሽ! ✨"
+        
+        await update.message.reply_text(welcome_text)
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("ቦቱ በስኬት ስራ ጀምሯል! ሊንኮችን በራስ-ሰር ያጠፋል።")
-
+# 2. Link Deletion Function (Ignores Admins)
 async def delete_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
-    if not message:
+    if not message or not message.text:
         return
 
-    # Check text or caption for links
-    text_content = message.text or message.caption or ""
+    chat_id = message.chat_id
+    user_id = message.from_user.id
 
-    # Check if user is Admin or Creator (Allow admins to post links)
-    member = await context.bot.get_chat_member(chat_id=message.chat_id, user_id=message.from_user.id)
-    if member.status in ['administrator', 'creator']:
-        return
+    try:
+        # Check if the user is an Admin or Creator
+        member = await context.bot.get_chat_member(chat_id, user_id)
+        if member.status in ['administrator', 'creator']:
+            return  # Allow admins to send links
+    except Exception as e:
+        print(f"Error checking admin status: {e}")
 
-    # Check for links or link entities
-    has_link_entity = any(entity.type in ['url', 'text_link'] for entity in (message.entities or []))
-    
-    if re.search(URL_REGEX, text_content) or has_link_entity:
-        try:
-            await message.delete()
-            
-            user_info = message.from_user.username or message.from_user.first_name
-            print(f"Deleted link from user: {user_info}")
-            
-            await message.chat.send_message(
-                f"⚠️ ተጠቃሚ @{user_info}፣ በግሩፑ ውስጥ ሊንክ መላክ የተከለከለ ነው!"
-            )
-        except Exception as e:
-            print(f"Error deleting message: {e}")
+    # Delete the message if it contains links
+    await message.delete()
 
 def main():
-    keep_alive()  # Starts the web server
+    keep_alive()
+
     application = Application.builder().token(TOKEN).build()
 
-    application.add_handler(CommandHandler("start", start))
-    
-    # ፕሪቪው ያላቸውን እና መደበኛ ሊንኮችን ሙሉ በሙሉ የሚይዝ መያዣ
-    link_filter = (filters.TEXT | filters.Entity("url") | filters.Entity("text_link")) & ~filters.COMMAND
-    application.add_handler(MessageHandler(link_filter, delete_links))
+    # Welcome message handler for new group members
+    application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome_new_member))
+
+    # Link filter handler for text messages
+    application.add_handler(MessageHandler(filters.TEXT & (filters.Entity("url") | filters.Entity("text_link")), delete_links))
 
     print("Bot is running...")
     application.run_polling()
