@@ -30,7 +30,7 @@ async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE)
             continue
             
         first_name = member.first_name
-        welcome_text = f"ሰላም {first_name} 👋\nእንኳን ወደ ግሩፓችን በደህና መጣህ/ሽ! ✨"
+        welcome_text = f"ሰላም {first_name} 👋\nእንኳን ወደ የለኩ ከታ ቃለህይወት ቤተክርስቲያን የወጣቶች አገልግሎት ግሩፓችን በደህና መጣህ/ሽ! ✨"
         
         await update.message.reply_text(welcome_text)
 
