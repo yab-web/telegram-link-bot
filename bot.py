@@ -22,8 +22,7 @@ def keep_alive():
     t.start()
 
 # --- 2. Telegram Bot Setup ---
-# ማስታወሻ፦ ቦት ፋዘር ላይ አዲስ Token ከተቀበልክ እዚህ ጋር መተካትህን አትርሳ!
-TOKEN = "8744677134:AAHQHkXdhFvolRPKj2EraFSuEENxYGeGA2k"
+TOKEN = "8744677134:AAH1h_vL89B80VE0EJcitb1cYx0pJ_LbKAg"
 
 # Regex pattern for URLs
 URL_REGEX = r'(https?://[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}[^\s]*)'
@@ -33,20 +32,24 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def delete_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
-    if not message or not message.text:
+    if not message:
         return
+
+    # Check text or caption for links
+    text_content = message.text or message.caption or ""
 
     # Check if user is Admin or Creator (Allow admins to post links)
     member = await context.bot.get_chat_member(chat_id=message.chat_id, user_id=message.from_user.id)
     if member.status in ['administrator', 'creator']:
         return
 
-    # Check for links
-    if re.search(URL_REGEX, message.text):
+    # Check for links or link entities
+    has_link_entity = any(entity.type in ['url', 'text_link'] for entity in (message.entities or []))
+    
+    if re.search(URL_REGEX, text_content) or has_link_entity:
         try:
             await message.delete()
             
-            # Render Logs ላይ መረጃው በግልጽ እንዲታይ የሚቀረፅበት ቦታ
             user_info = message.from_user.username or message.from_user.first_name
             print(f"Deleted link from user: {user_info}")
             
@@ -61,7 +64,10 @@ def main():
     application = Application.builder().token(TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, delete_links))
+    
+    # ፕሪቪው ያላቸውን እና መደበኛ ሊንኮችን ሙሉ በሙሉ የሚይዝ መያዣ
+    link_filter = (filters.TEXT | filters.Entity("url") | filters.Entity("text_link")) & ~filters.COMMAND
+    application.add_handler(MessageHandler(link_filter, delete_links))
 
     print("Bot is running...")
     application.run_polling()
